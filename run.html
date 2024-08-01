@@ -32,11 +32,13 @@
         const timeout = parseInt(params.get('timeout') || 0);
         const dontAbortRound = params.get('dontAbortRound') === '1';
         const alg = params.get('alg') === '1';
+        const minDelay = parseInt(params.get('minDelay') || 0);
 
         const myLang = randomChoice(languages)
 
         function sendRequest(method, url, data) {
             return new Promise((resolve, reject) => {
+                const startTs = Date.now();
                 const controller = new AbortController();
 
                 let fetchTimeout = setTimeout(() => {
@@ -72,12 +74,20 @@
                     }
                 }
 
+                let preResolve = async () => {
+                    let fetchDuration = Date.now() - startTs;
+                    if (fetchDuration < minDelay) {
+                        await new Promise(resolve => setTimeout(resolve, fetchDuration - minDelay)); 
+                    }
+                    resolve();
+                }
+
                 fetch(url, reqParams).then(response => {
                     clearTimeout(fetchTimeout);
-                    resolve();
+                    preResolve();
                 }).catch(err => {
                     clearTimeout(fetchTimeout);
-                    resolve();
+                    preResolve();
                 });
             });
         }
